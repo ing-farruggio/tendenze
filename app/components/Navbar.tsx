@@ -47,6 +47,15 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  useEffect(() => {
     if (searchOpen && searchInputRef.current) searchInputRef.current.focus();
   }, [searchOpen]);
 
@@ -182,9 +191,15 @@ export default function Navbar() {
 
             {/* HAMBURGER */}
             <button className="nav-mobile-btn" onClick={() => setMobileOpen(!mobileOpen)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", color: "#2a2520", flexDirection: "column", gap: "5px" }}>
-              <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s", transform: mobileOpen ? "rotate(45deg) translateY(6px)" : "none" }} />
-              <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s", opacity: mobileOpen ? 0 : 1 }} />
-              <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s", transform: mobileOpen ? "rotate(-45deg) translateY(-6px)" : "none" }} />
+              {mobileOpen ? (
+                  <span style={{ fontSize: 22, color: "#2a2520", lineHeight: 1 }}>✕</span>
+              ) : (
+                  <>
+                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520" }} />
+                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520" }} />
+                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520" }} />
+                  </>
+              )}
             </button>
           </div>
         </nav>
