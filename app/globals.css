@@ -4,3 +4,204 @@ body {
     background: white;
     color: black;
 }
+
+/* ── RESPONSIVE GLOBALE ── */
+
+* {
+    box-sizing: border-box;
+}
+
+/* NAVBAR */
+@media (max-width: 768px) {
+    nav {
+        padding: 16px 20px !important;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    nav > div:nth-child(2) {
+        display: none !important;
+    }
+
+    nav > span, nav > a {
+        font-size: 18px !important;
+    }
+}
+
+/* HERO */
+@media (max-width: 768px) {
+    section[style*="gridTemplateColumns: \"1fr 1fr\""] {
+        grid-template-columns: 1fr !important;
+    }
+
+    .hero-left {
+        padding: 48px 24px !important;
+    }
+
+    .hero-left h1 {
+        font-size: 48px !important;
+    }
+
+    .hero-right {
+        min-height: 300px;
+    }
+
+    .hero-right > div[style*="position: absolute"] {
+        display: none !important;
+    }
+}
+
+/* SEZIONI GENERALI */
+@media (max-width: 768px) {
+    section {
+        padding: 60px 20px !important;
+    }
+
+    div[style*="padding: \"100px 72px\""] {
+        padding: 60px 20px !important;
+    }
+
+    div[style*="padding: \"72px 72px"] {
+        padding: 48px 20px !important;
+    }
+}
+
+/* GRIGLIA PRODOTTI */
+@media (max-width: 768px) {
+    div[style*="repeat(4, 1fr)"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+    }
+
+    div[style*="repeat(3, 1fr)"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+    }
+}
+
+/* BANNER */
+@media (max-width: 768px) {
+    div[style*="gridTemplateColumns: \"1fr 1fr\""] {
+        grid-template-columns: 1fr !important;
+    }
+
+    div[style*="padding: \"80px 72px\""] {
+        padding: 48px 24px !important;
+    }
+}
+
+/* FOOTER */
+@media (max-width: 768px) {
+    footer div[style*="gridTemplateColumns: \"2fr 1fr 1fr 1fr\""] {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 32px !important;
+    }
+}
+
+/* PAGINA PRODOTTI CON SIDEBAR */
+@media (max-width: 768px) {
+    div[style*="gridTemplateColumns: \"260px 1fr\""] {
+        grid-template-columns: 1fr !important;
+    }
+
+    aside {
+        border-right: none !important;
+        border-bottom: 1px solid rgba(184,154,106,0.15) !important;
+        padding: 24px 20px !important;
+    }
+}
+
+/* SINGOLO PRODOTTO */
+@media (max-width: 768px) {
+    div[style*="padding: \"64px 72px\""] {
+        padding: 32px 20px !important;
+    }
+
+    div[style*="gridTemplateColumns: \"1fr 1fr\""] {
+        grid-template-columns: 1fr !important;
+    }
+
+    div[style*="paddingRight: 64"] {
+        padding-right: 0 !important;
+        margin-bottom: 32px;
+    }
+
+    div[style*="paddingLeft: 32"] {
+        padding-left: 0 !important;
+    }
+
+    h1[style*="fontSize: 48"] {
+        font-size: 36px !important;
+    }
+}
+
+/* CARRELLO */
+@media (max-width: 768px) {
+    div[style*="gridTemplateColumns: \"1fr 380px\""] {
+        grid-template-columns: 1fr !important;
+    }
+
+    div[style*="gridTemplateColumns: \"120px 1fr\""] {
+        grid-template-columns: 80px 1fr !important;
+        gap: 16px !important;
+    }
+}
+
+/* LOGIN E REGISTRAZIONE */
+@media (max-width: 768px) {
+    div[style*="maxWidth: 420"] {
+        padding: 0 20px !important;
+    }
+
+    div[style*="maxWidth: 460"] {
+        padding: 0 20px !important;
+    }
+
+    div[style*="gridTemplateColumns: \"1fr 1fr\""][style*="gap: 16"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* PROFILO */
+@media (max-width: 768px) {
+    div[style*="maxWidth: 700"] {
+        padding: 32px 20px !important;
+    }
+
+    div[style*="gridTemplateColumns: \"2fr 1fr 1fr\""] {
+        grid-template-columns: 1fr !important;
+    }
+
+    button[style*="padding: \"12px 24px\""] {
+        width: 100% !important;
+    }
+}
+
+/* ADMIN */
+@media (max-width: 768px) {
+    div[style*="width: var(--sidebar-w)"] {
+        display: none !important;
+    }
+}
+
+/* TESTI GRANDI */
+@media (max-width: 480px) {
+    h1[style*="fontSize: \"72px\""] {
+        font-size: 40px !important;
+    }
+
+    h2[style*="fontSize: \"52px\""] {
+        font-size: 36px !important;
+    }
+
+    h2[style*="fontSize: \"48px\""] {
+        font-size: 32px !important;
+    }
+}
+
+/* MENU HAMBURGER placeholder */
+@media (max-width: 768px) {
+    .mobile-menu-hidden {
+        display: none !important;
+    }
+}
