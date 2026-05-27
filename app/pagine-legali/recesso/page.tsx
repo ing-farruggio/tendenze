@@ -5,10 +5,10 @@ export default function Recesso() {
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
             <Navbar />
-            <div style={{ maxWidth: 760, margin: "0 auto", padding: "64px 24px" }}>
+            <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 20px" }}>
                 <div style={{ marginBottom: 48 }}>
                     <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.4em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 12 }}>Legale</div>
-                    <h1 style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 40, fontWeight: 300, color: "#2a2520" }}>Diritto di Recesso</h1>
+                    <h1 style={{ fontFamily: "var(--font-cormorant), serif", fontSize: "clamp(28px, 5vw, 40px)", fontWeight: 300, color: "#2a2520" }}>Diritto di Recesso</h1>
                     <div style={{ fontSize: 12, fontWeight: 300, color: "#9e8c78", marginTop: 8 }}>Ultimo aggiornamento: {new Date().toLocaleDateString("it-IT")}</div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 300, lineHeight: 2, color: "#9e8c78" }}>
