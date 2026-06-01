@@ -191,17 +191,11 @@ export default function Navbar() {
 
             {/* HAMBURGER */}
             <button className="nav-mobile-btn" onClick={() => setMobileOpen(!mobileOpen)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", color: "#2a2520", flexDirection: "column", gap: "5px" }}>
-              {mobileOpen ? (
-                  <span style={{ fontSize: 20, color: "#2a2520", lineHeight: 1, fontWeight: 300 }}>✕</span>
-              ) : (
-                  <>
-                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s" }} />
-                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s" }} />
-                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s" }} />
-                  </>
-              )}
-
+              <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "transform 0.3s ease, opacity 0.3s ease", transform: mobileOpen ? "translateY(6.5px) rotate(45deg)" : "none" }} />
+              <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "opacity 0.3s ease", opacity: mobileOpen ? 0 : 1 }} />
+              <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "transform 0.3s ease, opacity 0.3s ease", transform: mobileOpen ? "translateY(-6.5px) rotate(-45deg)" : "none" }} />
             </button>
+
           </div>
         </nav>
 
