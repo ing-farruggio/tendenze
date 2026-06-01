@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/app/context/CartContext";
@@ -29,10 +29,6 @@ export default function ProductPage() {
     const [isFavorite, setIsFavorite] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
-    const touchStartX = useRef<number | null>(null);
-    const touchStartY = useRef<number | null>(null);
-    const touchEndX = useRef<number | null>(null);
-    const galleryRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -52,21 +48,6 @@ export default function ProductPage() {
             }
         });
     }, [id]);
-
-    useEffect(() => {
-        const el = galleryRef.current;
-        if (!el) return;
-        const handler = (e: TouchEvent) => {
-            if (touchStartX.current === null) return;
-            const deltaX = Math.abs(e.touches[0].clientX - touchStartX.current);
-            const deltaY = Math.abs(e.touches[0].clientY - (touchStartY.current ?? 0));
-            if (deltaX > deltaY && deltaX > 5) {
-                e.preventDefault();
-            }
-        };
-        el.addEventListener("touchmove", handler, { passive: false });
-        return () => el.removeEventListener("touchmove", handler);
-    }, []);
 
     const handleAddToCart = () => {
         if (!product) return;
@@ -98,25 +79,6 @@ export default function ProductPage() {
         setActiveImage(i => (i === product.images.length - 1 ? 0 : i + 1));
     };
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        touchStartX.current = e.touches[0].clientX;
-        touchStartY.current = e.touches[0].clientY;
-    };
-
-    const handleTouchEnd = (e: React.TouchEvent) => {
-        touchEndX.current = e.changedTouches[0].clientX;
-        if (touchStartX.current === null || touchEndX.current === null) return;
-        const diffX = touchStartX.current - touchEndX.current;
-        const diffY = Math.abs((touchStartY.current ?? 0) - e.changedTouches[0].clientY);
-        if (Math.abs(diffX) > diffY && Math.abs(diffX) > 50) {
-            if (diffX > 0) nextImage();
-            else prevImage();
-        }
-        touchStartX.current = null;
-        touchStartY.current = null;
-        touchEndX.current = null;
-    };
-
     if (loading) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78", fontSize: 13 }}>Caricamento...</div>;
     if (!product) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78", fontSize: 13 }}>Prodotto non trovato.</div>;
 
@@ -138,12 +100,7 @@ export default function ProductPage() {
             <div className="product-layout">
 
                 <div className="product-gallery">
-                    <div
-                        ref={galleryRef}
-                        style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", position: "relative", userSelect: "none" }}
-                        onTouchStart={handleTouchStart}
-                        onTouchEnd={handleTouchEnd}
-                    >
+                    <div style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", position: "relative" }}>
                         {product.images?.[activeImage] ? (
                             <img src={product.images[activeImage]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.3s ease" }} />
                         ) : (
@@ -186,32 +143,34 @@ export default function ProductPage() {
 
                 <div className="product-info">
                     <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.4em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 12 }}>
-                        {product.category_gender === "donna" ? "Donna" : "Uomo"} - {product.category_main}{product.category_sub ? ` / ${product.category_sub}` : ""}
+                        {product.category_gender === "donna" ? "Donna" : "Uomo"} — {product.category_main}{product.category_sub ? ` / ${product.category_sub}` : ""}
                     </div>
                     <h1 style={{ fontFamily: "var(--font-cormorant), serif", fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 300, color: "#2a2520", lineHeight: 1.1, marginBottom: 20 }}>
                         {product.name}
                     </h1>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
             <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: "clamp(28px, 4vw, 36px)", fontWeight: 300, color: "#2a2520" }}>
-              E {product.discounted_price ?? product.price}
+              € {(product.discounted_price ?? product.price).toFixed(2)}
             </span>
                         {product.discounted_price && (
-                            <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 22, color: "#c9b99a", textDecoration: "line-through" }}>E {product.price}</span>
+                            <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 22, color: "#c9b99a", textDecoration: "line-through" }}>
+                € {product.price.toFixed(2)}
+              </span>
                         )}
                     </div>
                     {product.description && (
                         <p style={{ fontSize: 13, fontWeight: 300, lineHeight: 1.9, color: "#9e8c78", marginBottom: 32, letterSpacing: "0.05em" }}>{product.description}</p>
                     )}
                     <div style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: product.stock <= 2 ? "#c97a6a" : "#6db88a", marginBottom: 24 }}>
-                        {product.stock === 0 ? "Esaurito" : product.stock <= 2 ? `Ultimi ${product.stock} pezzi` : "Disponibile"}
+                        {product.stock === 0 ? "● Esaurito" : product.stock <= 2 ? `● Ultimi ${product.stock} pezzi` : "● Disponibile"}
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 40 }}>
                         <button onClick={handleAddToCart} disabled={product.stock === 0} style={{ padding: "16px 40px", background: added ? "#6db88a" : product.stock === 0 ? "#c9b99a" : "#2a2520", color: "#f5f0ea", border: "none", fontSize: 11, fontWeight: 400, letterSpacing: "0.3em", textTransform: "uppercase", cursor: product.stock === 0 ? "not-allowed" : "pointer", transition: "background 0.3s" }}>
-                            {added ? "Aggiunto al Carrello" : product.stock === 0 ? "Prodotto Esaurito" : "Aggiungi al Carrello"}
+                            {added ? "✓ Aggiunto al Carrello" : product.stock === 0 ? "Prodotto Esaurito" : "Aggiungi al Carrello"}
                         </button>
                         <button onClick={handleFavorite} disabled={favLoading} style={{ padding: "16px 40px", background: "none", border: isFavorite ? "1px solid #b89a6a" : "1px solid rgba(42,37,32,0.2)", color: isFavorite ? "#b89a6a" : "#2a2520", fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.3s" }}>
-                            {isFavorite ? "Nei preferiti" : "Aggiungi ai preferiti"}
+                            {isFavorite ? "♥ Nei preferiti" : "♡ Aggiungi ai preferiti"}
                         </button>
                     </div>
 
@@ -219,7 +178,7 @@ export default function ProductPage() {
                         <div style={{ fontSize: 10, fontWeight: 400, letterSpacing: "0.3em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 12 }}>Dettagli</div>
                         {[
                             product.category_sub ? { label: "Sottocategoria", value: product.category_sub } : null,
-                            { label: "Disponibilita", value: `${product.stock} pezzi` },
+                            { label: "Disponibilità", value: `${product.stock} pezzi` },
                         ].filter(Boolean).map((item: any) => (
                             <div key={item.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 300, color: "#9e8c78", paddingBottom: 10, borderBottom: "1px solid rgba(184,154,106,0.08)" }}>
                                 <span>{item.label}</span>
@@ -230,7 +189,7 @@ export default function ProductPage() {
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         {[
-                            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="1.5"/><circle cx="18.5" cy="18.5" r="1.5"/></svg>, text: "Spedizione gratuita sopra 150" },
+                            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="1.5"/><circle cx="18.5" cy="18.5" r="1.5"/></svg>, text: "Spedizione gratuita sopra €150" },
                             { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>, text: "Resi gratuiti entro 30 giorni" },
                             { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, text: "Pagamento sicuro e protetto" },
                         ].map((item, i) => (
@@ -244,7 +203,7 @@ export default function ProductPage() {
             </div>
 
             <div style={{ padding: "0 24px 48px" }}>
-                <a href="/prodotti" style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9e8c78", textDecoration: "none" }}>Torna ai prodotti</a>
+                <a href="/prodotti" style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9e8c78", textDecoration: "none" }}>← Torna ai prodotti</a>
             </div>
 
             <style>{`
@@ -255,7 +214,7 @@ export default function ProductPage() {
         .gallery-dots { display: none; }
         @media (max-width: 768px) {
           .product-layout { grid-template-columns: 1fr; gap: 32px; padding: 24px 20px; }
-          .gallery-arrow { display: none !important; }
+          .gallery-arrow { opacity: 1 !important; display: flex !important; }
           .gallery-dots { display: flex !important; }
           .gallery-thumbs { display: none !important; }
         }
