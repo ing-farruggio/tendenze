@@ -152,7 +152,7 @@ export default function Home() {
           <div className="footer-grid">
             <div>
               <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: "24px", fontWeight: 300, letterSpacing: "0.3em", color: "white", marginBottom: "16px" }}>
-                TEN<span style={{ color: "#b89a6a" }}>D</span>ENZE
+                TENDENZE
               </div>
               <p style={{ fontSize: "12px", fontWeight: 300, lineHeight: 1.9, color: "#c9b99a", maxWidth: "260px" }}>
                 Gioielli e borse pensati per chi vive il lusso come filosofia.
