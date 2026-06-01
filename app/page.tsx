@@ -48,7 +48,7 @@ export default function Home() {
         <section className="hero-section">
           <div className="hero-left">
             <div style={{ fontSize: "10px", letterSpacing: "0.4em", textTransform: "uppercase", color: "#b89a6a", marginBottom: "24px", fontWeight: 300 }}>
-              /*— trattino del tag hero*/ {settings.hero_tag}
+              {settings.hero_tag}
             </div>
             <h1 className="hero-title">
               {heroLines.map((line, i) => (
