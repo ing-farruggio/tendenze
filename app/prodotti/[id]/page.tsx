@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/app/context/CartContext";
@@ -29,11 +29,14 @@ export default function ProductPage() {
     const [isFavorite, setIsFavorite] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    const touchStartX = useRef<number | null>(null);
+    const touchEndX = useRef<number | null>(null);
 
     useEffect(() => {
         if (!id) return;
         setLoading(true);
         setProduct(null);
+        setActiveImage(0);
         supabase.from("products").select("*").eq("id", id).single()
             .then(({ data }) => { setProduct(data); setLoading(false); });
     }, [id]);
@@ -68,16 +71,42 @@ export default function ProductPage() {
         setFavLoading(false);
     };
 
+    const prevImage = () => {
+        if (!product) return;
+        setActiveImage(i => (i === 0 ? product.images.length - 1 : i - 1));
+    };
+
+    const nextImage = () => {
+        if (!product) return;
+        setActiveImage(i => (i === product.images.length - 1 ? 0 : i + 1));
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        touchEndX.current = e.changedTouches[0].clientX;
+        if (touchStartX.current === null || touchEndX.current === null) return;
+        const diff = touchStartX.current - touchEndX.current;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) nextImage();
+            else prevImage();
+        }
+        touchStartX.current = null;
+        touchEndX.current = null;
+    };
+
     if (loading) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78", fontSize: 13 }}>Caricamento...</div>;
     if (!product) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78", fontSize: 13 }}>Prodotto non trovato.</div>;
 
     const discount = product.discounted_price ? Math.round((1 - product.discounted_price / product.price) * 100) : null;
+    const hasMultiple = product.images?.length > 1;
 
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
             <Navbar />
 
-            {/* BREADCRUMB */}
             <div style={{ padding: "12px 24px", fontSize: 11, fontWeight: 300, color: "#9e8c78", letterSpacing: "0.1em", borderBottom: "1px solid rgba(184,154,106,0.1)", overflowX: "auto", whiteSpace: "nowrap" }}>
                 <a href="/" style={{ color: "#9e8c78", textDecoration: "none" }}>Home</a>
                 <span style={{ margin: "0 8px" }}>›</span>
@@ -86,24 +115,72 @@ export default function ProductPage() {
                 <span style={{ color: "#2a2520" }}>{product.name}</span>
             </div>
 
-            {/* PRODOTTO */}
             <div className="product-layout">
 
                 {/* GALLERIA */}
                 <div className="product-gallery">
-                    <div style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", marginBottom: 12, position: "relative" }}>
+                    <div
+                        style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", position: "relative", userSelect: "none" }}
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={handleTouchEnd}
+                    >
                         {product.images?.[activeImage] ? (
-                            <img src={product.images[activeImage]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img
+                                src={product.images[activeImage]}
+                                alt={product.name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.3s ease" }}
+                            />
                         ) : (
                             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 80, opacity: 0.3 }}>◇</div>
                         )}
+
+                        {/* BADGE */}
                         {product.is_new && <div style={{ position: "absolute", top: 16, left: 16, background: "#b89a6a", color: "white", fontSize: 9, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", padding: "5px 12px" }}>New</div>}
                         {discount && <div style={{ position: "absolute", top: product.is_new ? 44 : 16, left: 16, background: "#2a2520", color: "white", fontSize: 9, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", padding: "5px 12px" }}>−{discount}%</div>}
+
+                        {/* FRECCE DESKTOP */}
+                        {hasMultiple && (
+                            <>
+                                <button
+                                    onClick={prevImage}
+                                    className="gallery-arrow gallery-arrow-left"
+                                    style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", background: "rgba(250,248,245,0.9)", border: "1px solid rgba(184,154,106,0.3)", width: 40, height: 40, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#2a2520", backdropFilter: "blur(4px)" }}
+                                >
+                                    ‹
+                                </button>
+                                <button
+                                    onClick={nextImage}
+                                    className="gallery-arrow gallery-arrow-right"
+                                    style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "rgba(250,248,245,0.9)", border: "1px solid rgba(184,154,106,0.3)", width: 40, height: 40, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#2a2520", backdropFilter: "blur(4px)" }}
+                                >
+                                    ›
+                                </button>
+                            </>
+                        )}
+
+                        {/* DOTS MOBILE */}
+                        {hasMultiple && (
+                            <div className="gallery-dots" style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
+                                {product.images.map((_, i) => (
+                                    <div
+                                        key={i}
+                                        onClick={() => setActiveImage(i)}
+                                        style={{ width: i === activeImage ? 20 : 6, height: 6, borderRadius: 3, background: i === activeImage ? "#b89a6a" : "rgba(255,255,255,0.7)", transition: "all 0.3s ease", cursor: "pointer" }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    {product.images?.length > 1 && (
-                        <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+
+                    {/* THUMBNAILS DESKTOP */}
+                    {hasMultiple && (
+                        <div className="gallery-thumbs" style={{ display: "flex", gap: 8, marginTop: 12, overflowX: "auto" }}>
                             {product.images.map((img, i) => (
-                                <div key={i} onClick={() => setActiveImage(i)} style={{ width: 70, height: 90, overflow: "hidden", cursor: "pointer", border: activeImage === i ? "2px solid #b89a6a" : "2px solid transparent", transition: "border-color 0.2s", flexShrink: 0 }}>
+                                <div
+                                    key={i}
+                                    onClick={() => setActiveImage(i)}
+                                    style={{ width: 70, height: 90, overflow: "hidden", cursor: "pointer", border: activeImage === i ? "2px solid #b89a6a" : "2px solid transparent", transition: "border-color 0.2s", flexShrink: 0 }}
+                                >
                                     <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 </div>
                             ))}
@@ -143,7 +220,6 @@ export default function ProductPage() {
                         </button>
                     </div>
 
-                    {/* DETTAGLI */}
                     <div style={{ paddingTop: 24, borderTop: "1px solid rgba(184,154,106,0.15)", marginBottom: 24 }}>
                         <div style={{ fontSize: 10, fontWeight: 400, letterSpacing: "0.3em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 12 }}>Dettagli</div>
                         {[
@@ -157,7 +233,6 @@ export default function ProductPage() {
                         ))}
                     </div>
 
-                    {/* SPEDIZIONE */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         {[
                             { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="1.5"/><circle cx="18.5" cy="18.5" r="1.5"/></svg>, text: "Spedizione gratuita sopra €150" },
@@ -179,10 +254,15 @@ export default function ProductPage() {
 
             <style>{`
         .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding: 48px 72px; max-width: 1400px; margin: 0 auto; }
-        .product-gallery { }
         .product-info { padding-top: 8px; }
+        .gallery-arrow { opacity: 0; transition: opacity 0.2s ease; }
+        .product-gallery:hover .gallery-arrow { opacity: 1; }
+        .gallery-dots { display: none; }
         @media (max-width: 768px) {
           .product-layout { grid-template-columns: 1fr; gap: 32px; padding: 24px 20px; }
+          .gallery-arrow { display: none !important; }
+          .gallery-dots { display: flex !important; }
+          .gallery-thumbs { display: none !important; }
         }
       `}</style>
         </main>
