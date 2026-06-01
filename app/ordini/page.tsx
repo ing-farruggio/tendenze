@@ -11,8 +11,8 @@ const ordini_fake = [
         spedizione: "Gratuita",
         tracking: "IT123456789",
         prodotti: [
-            { nome: "Collana Perle Barocche", categoria: "Gioielli", prezzo: 129.00, quantita: 1, image: "" },
-            { nome: "Bracciale Dorato", categoria: "Bijoux", prezzo: 60.00, quantita: 1, image: "" },
+            { nome: "Collana Perle Barocche", categoria: "Gioielli", prezzo: 129.00, quantita: 1 },
+            { nome: "Bracciale Dorato", categoria: "Bijoux", prezzo: 60.00, quantita: 1 },
         ]
     },
     {
@@ -23,7 +23,7 @@ const ordini_fake = [
         spedizione: "Gratuita",
         tracking: "IT987654321",
         prodotti: [
-            { nome: "Borsa Pelle Nera", categoria: "Accessori", prezzo: 245.00, quantita: 1, image: "" },
+            { nome: "Borsa Pelle Nera", categoria: "Accessori", prezzo: 245.00, quantita: 1 },
         ]
     },
     {
@@ -31,19 +31,26 @@ const ordini_fake = [
         data: "3 Marzo 2026",
         stato: "In lavorazione",
         totale: 78.90,
-        spedizione: "€ 9.90",
+        spedizione: "9.90",
         tracking: null,
         prodotti: [
-            { nome: "Orecchini Perla", categoria: "Gioielli", prezzo: 69.00, quantita: 1, image: "" },
+            { nome: "Orecchini Perla", categoria: "Gioielli", prezzo: 69.00, quantita: 1 },
         ]
     },
 ];
 
 const statoColor: Record<string, string> = {
     "In lavorazione": "#b89a6a",
-    "Spedito": "#6db88a",
-    "Consegnato": "#9e8c78",
+    "Spedito": "#4a7fa5",
+    "Consegnato": "#5a8a6a",
     "Annullato": "#c97a6a",
+};
+
+const statoBg: Record<string, string> = {
+    "In lavorazione": "rgba(184,154,106,0.1)",
+    "Spedito": "rgba(74,127,165,0.1)",
+    "Consegnato": "rgba(90,138,106,0.1)",
+    "Annullato": "rgba(201,122,106,0.1)",
 };
 
 const statoIcon: Record<string, string> = {
@@ -71,27 +78,28 @@ export default function OrdiniPage() {
                     {ordini_fake.map(ordine => (
                         <div key={ordine.id} style={{ background: "white", border: "1px solid rgba(184,154,106,0.15)", overflow: "hidden" }}>
 
-                            {/* HEADER ORDINE */}
+                            {/* HEADER */}
                             <div
                                 onClick={() => setExpanded(expanded === ordine.id ? null : ordine.id)}
-                                style={{ padding: "20px 24px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}
+                                style={{ padding: "20px 24px", cursor: "pointer" }}
                             >
-                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                                     <div style={{ fontSize: 13, fontWeight: 400, color: "#2a2520", letterSpacing: "0.05em" }}>{ordine.id}</div>
-                                    <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78" }}>{ordine.data}</div>
+                                    <span style={{ fontSize: 16, color: "#9e8c78", transform: expanded === ordine.id ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>›</span>
                                 </div>
-
-                                <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                        <span style={{ fontSize: 14, color: statoColor[ordine.stato] }}>{statoIcon[ordine.stato]}</span>
-                                        <span style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.15em", textTransform: "uppercase", color: statoColor[ordine.stato] }}>{ordine.stato}</span>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                                        <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78" }}>{ordine.data}</div>
+                                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: statoBg[ordine.stato], padding: "4px 10px", borderRadius: 20 }}>
+                                            <span style={{ fontSize: 11, color: statoColor[ordine.stato] }}>{statoIcon[ordine.stato]}</span>
+                                            <span style={{ fontSize: 10, fontWeight: 400, letterSpacing: "0.15em", textTransform: "uppercase", color: statoColor[ordine.stato] }}>{ordine.stato}</span>
+                                        </div>
                                     </div>
                                     <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20, fontWeight: 300, color: "#2a2520" }}>€ {ordine.totale.toFixed(2)}</div>
-                                    <span style={{ fontSize: 16, color: "#9e8c78", transform: expanded === ordine.id ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>›</span>
                                 </div>
                             </div>
 
-                            {/* DETTAGLIO ORDINE */}
+                            {/* DETTAGLIO */}
                             {expanded === ordine.id && (
                                 <div style={{ borderTop: "1px solid rgba(184,154,106,0.1)", padding: "20px 24px" }}>
 
@@ -113,7 +121,7 @@ export default function OrdiniPage() {
                                     {/* RIEPILOGO */}
                                     <div style={{ background: "#faf8f5", padding: "16px 20px", marginBottom: 16 }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 300, color: "#9e8c78", marginBottom: 8 }}>
-                                            <span>Spedizione</span><span>{ordine.spedizione}</span>
+                                            <span>Spedizione</span><span>{ordine.spedizione === "Gratuita" ? "Gratuita" : `€ ${ordine.spedizione}`}</span>
                                         </div>
                                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 400, color: "#2a2520" }}>
                                             <span>Totale</span>
