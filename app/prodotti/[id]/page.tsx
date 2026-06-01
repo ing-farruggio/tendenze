@@ -30,6 +30,7 @@ export default function ProductPage() {
     const [favLoading, setFavLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const touchStartX = useRef<number | null>(null);
+    const touchStartY = useRef<number | null>(null);
     const touchEndX = useRef<number | null>(null);
     const galleryRef = useRef<HTMLDivElement>(null);
 
@@ -56,9 +57,11 @@ export default function ProductPage() {
         const el = galleryRef.current;
         if (!el) return;
         const handler = (e: TouchEvent) => {
-            if (touchStartX.current !== null) {
-                const diff = Math.abs(e.touches[0].clientX - touchStartX.current);
-                if (diff > 10) e.preventDefault();
+            if (touchStartX.current === null) return;
+            const deltaX = Math.abs(e.touches[0].clientX - touchStartX.current);
+            const deltaY = Math.abs(e.touches[0].clientY - (touchStartY.current ?? 0));
+            if (deltaX > deltaY && deltaX > 5) {
+                e.preventDefault();
             }
         };
         el.addEventListener("touchmove", handler, { passive: false });
@@ -97,23 +100,20 @@ export default function ProductPage() {
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (touchStartX.current === null) return;
-        const diff = Math.abs(e.touches[0].clientX - touchStartX.current);
-        if (diff > 10) e.preventDefault();
+        touchStartY.current = e.touches[0].clientY;
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
         touchEndX.current = e.changedTouches[0].clientX;
         if (touchStartX.current === null || touchEndX.current === null) return;
-        const diff = touchStartX.current - touchEndX.current;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) nextImage();
+        const diffX = touchStartX.current - touchEndX.current;
+        const diffY = Math.abs((touchStartY.current ?? 0) - e.changedTouches[0].clientY);
+        if (Math.abs(diffX) > diffY && Math.abs(diffX) > 50) {
+            if (diffX > 0) nextImage();
             else prevImage();
         }
         touchStartX.current = null;
+        touchStartY.current = null;
         touchEndX.current = null;
     };
 
@@ -142,7 +142,6 @@ export default function ProductPage() {
                         ref={galleryRef}
                         style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", position: "relative", userSelect: "none" }}
                         onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
                         {product.images?.[activeImage] ? (
