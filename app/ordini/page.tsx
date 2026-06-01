@@ -62,6 +62,9 @@ const statoIcon: Record<string, string> = {
 
 export default function OrdiniPage() {
     const [expanded, setExpanded] = useState<string | null>(null);
+    const [assistenza, setAssistenza] = useState<string | null>(null);
+    const [assistenzaForm, setAssistenzaForm] = useState({ motivo: "", messaggio: "" });
+    const [assistenzaSent, setAssistenzaSent] = useState(false);
 
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
@@ -121,7 +124,8 @@ export default function OrdiniPage() {
                                     {/* RIEPILOGO */}
                                     <div style={{ background: "#faf8f5", padding: "16px 20px", marginBottom: 16 }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 300, color: "#9e8c78", marginBottom: 8 }}>
-                                            <span>Spedizione</span><span>{ordine.spedizione === "Gratuita" ? "Gratuita" : `€ ${ordine.spedizione}`}</span>
+                                            <span>Spedizione</span>
+                                            <span>{ordine.spedizione === "Gratuita" ? "Gratuita" : `€ ${ordine.spedizione}`}</span>
                                         </div>
                                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 400, color: "#2a2520" }}>
                                             <span>Totale</span>
@@ -138,7 +142,7 @@ export default function OrdiniPage() {
                                         ) : (
                                             <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78" }}>Tracking non ancora disponibile</div>
                                         )}
-                                        <div style={{ display: "flex", gap: 10 }}>
+                                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                                             {ordine.stato === "Consegnato" && (
                                                 <button style={{ padding: "10px 20px", background: "none", border: "1px solid rgba(184,154,106,0.3)", color: "#b89a6a", fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer" }}>
                                                     Reso
@@ -149,7 +153,10 @@ export default function OrdiniPage() {
                                                     Annulla
                                                 </button>
                                             )}
-                                            <button style={{ padding: "10px 20px", background: "none", border: "1px solid rgba(42,37,32,0.2)", color: "#9e8c78", fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer" }}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setAssistenza(ordine.id); setAssistenzaForm({ motivo: "", messaggio: "" }); setAssistenzaSent(false); }}
+                                                style={{ padding: "10px 20px", background: "none", border: "1px solid rgba(42,37,32,0.2)", color: "#9e8c78", fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer" }}
+                                            >
                                                 Assistenza
                                             </button>
                                         </div>
@@ -160,6 +167,64 @@ export default function OrdiniPage() {
                     ))}
                 </div>
             </div>
+
+            {/* MODALE ASSISTENZA */}
+            {assistenza && (
+                <div onClick={() => { setAssistenza(null); setAssistenzaSent(false); }} style={{ position: "fixed", inset: 0, background: "rgba(42,37,32,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+                    <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "100%", maxWidth: 480, padding: "32px 28px", position: "relative" }}>
+                        <button onClick={() => { setAssistenza(null); setAssistenzaSent(false); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#9e8c78" }}>✕</button>
+
+                        {assistenzaSent ? (
+                            <div style={{ textAlign: "center", padding: "32px 0" }}>
+                                <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 28, fontWeight: 300, color: "#2a2520", marginBottom: 12 }}>Richiesta inviata</div>
+                                <p style={{ fontSize: 12, fontWeight: 300, color: "#9e8c78", lineHeight: 1.8 }}>Ti risponderemo entro 24 ore lavorative all indirizzo email associato al tuo account.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ fontSize: 10, fontWeight: 400, letterSpacing: "0.3em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 8 }}>Assistenza ordine</div>
+                                <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 22, fontWeight: 300, color: "#2a2520", marginBottom: 24 }}>{assistenza}</div>
+
+                                <div style={{ marginBottom: 16 }}>
+                                    <label style={{ display: "block", fontSize: 10, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", color: "#9e8c78", marginBottom: 8 }}>Motivo</label>
+                                    <select
+                                        value={assistenzaForm.motivo}
+                                        onChange={e => setAssistenzaForm(p => ({ ...p, motivo: e.target.value }))}
+                                        style={{ width: "100%", padding: "12px 16px", border: "1px solid rgba(184,154,106,0.2)", background: "#faf8f5", fontSize: 13, fontWeight: 300, outline: "none", fontFamily: "var(--font-jost), sans-serif", color: "#2a2520" }}
+                                    >
+                                        <option value="">Seleziona un motivo</option>
+                                        <option value="Prodotto danneggiato">Prodotto danneggiato</option>
+                                        <option value="Prodotto non conforme">Prodotto non conforme</option>
+                                        <option value="Ordine non arrivato">Ordine non arrivato</option>
+                                        <option value="Problema con il pagamento">Problema con il pagamento</option>
+                                        <option value="Altro">Altro</option>
+                                    </select>
+                                </div>
+
+                                <div style={{ marginBottom: 24 }}>
+                                    <label style={{ display: "block", fontSize: 10, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", color: "#9e8c78", marginBottom: 8 }}>Descrivi il problema</label>
+                                    <textarea
+                                        value={assistenzaForm.messaggio}
+                                        onChange={e => setAssistenzaForm(p => ({ ...p, messaggio: e.target.value }))}
+                                        rows={4}
+                                        placeholder="Descrivi il problema in dettaglio..."
+                                        style={{ width: "100%", padding: "12px 16px", border: "1px solid rgba(184,154,106,0.2)", background: "#faf8f5", fontSize: 13, fontWeight: 300, outline: "none", fontFamily: "var(--font-jost), sans-serif", color: "#2a2520", resize: "vertical", boxSizing: "border-box" as const }}
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        if (!assistenzaForm.motivo || !assistenzaForm.messaggio) return;
+                                        setAssistenzaSent(true);
+                                    }}
+                                    style={{ width: "100%", padding: "14px", background: "#2a2520", color: "#f5f0ea", border: "none", fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", cursor: "pointer" }}
+                                >
+                                    Invia richiesta
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
