@@ -195,9 +195,15 @@ export default function Navbar() {
                   <span style={{ fontSize: 22, color: "#2a2520", lineHeight: 1 }}>✕</span>
               ) : (
                   <>
-                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520" }} />
-                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520" }} />
-                    <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520" }} />
+                    {mobileOpen ? (
+                        <span style={{ fontSize: 20, color: "#2a2520", lineHeight: 1, fontWeight: 300 }}>✕</span>
+                    ) : (
+                        <>
+                          <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s" }} />
+                          <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s" }} />
+                          <span style={{ display: "block", width: 22, height: 1.5, background: "#2a2520", transition: "all 0.3s" }} />
+                        </>
+                    )}
                   </>
               )}
             </button>
