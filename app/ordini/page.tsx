@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/app/components/Navbar";
+import { supabase } from "@/lib/supabase";
 
 const ordini_fake = [
     {
@@ -65,6 +66,33 @@ export default function OrdiniPage() {
     const [assistenza, setAssistenza] = useState<string | null>(null);
     const [assistenzaForm, setAssistenzaForm] = useState({ motivo: "", messaggio: "" });
     const [assistenzaSent, setAssistenzaSent] = useState(false);
+    const [assistenzaLoading, setAssistenzaLoading] = useState(false);
+    const [assistenzaError, setAssistenzaError] = useState<string | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            if (data.user) setUserId(data.user.id);
+        });
+    }, []);
+
+    const handleAssistenzaSubmit = async () => {
+        if (!assistenzaForm.motivo || !assistenzaForm.messaggio) return;
+        setAssistenzaLoading(true);
+        setAssistenzaError(null);
+        const { error } = await supabase.from("support_requests").insert({
+            user_id: userId,
+            order_id: assistenza,
+            reason: assistenzaForm.motivo,
+            message: assistenzaForm.messaggio,
+        });
+        setAssistenzaLoading(false);
+        if (error) {
+            setAssistenzaError("Errore nell'invio. Riprova o contattaci via email.");
+        } else {
+            setAssistenzaSent(true);
+        }
+    };
 
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
@@ -154,7 +182,7 @@ export default function OrdiniPage() {
                                                 </button>
                                             )}
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); setAssistenza(ordine.id); setAssistenzaForm({ motivo: "", messaggio: "" }); setAssistenzaSent(false); }}
+                                                onClick={(e) => { e.stopPropagation(); setAssistenza(ordine.id); setAssistenzaForm({ motivo: "", messaggio: "" }); setAssistenzaSent(false); setAssistenzaError(null); }}
                                                 style={{ padding: "10px 20px", background: "none", border: "1px solid rgba(42,37,32,0.2)", color: "#9e8c78", fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer" }}
                                             >
                                                 Assistenza
@@ -170,14 +198,14 @@ export default function OrdiniPage() {
 
             {/* MODALE ASSISTENZA */}
             {assistenza && (
-                <div onClick={() => { setAssistenza(null); setAssistenzaSent(false); }} style={{ position: "fixed", inset: 0, background: "rgba(42,37,32,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+                <div onClick={() => { setAssistenza(null); setAssistenzaSent(false); setAssistenzaError(null); }} style={{ position: "fixed", inset: 0, background: "rgba(42,37,32,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
                     <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "100%", maxWidth: 480, padding: "32px 28px", position: "relative" }}>
-                        <button onClick={() => { setAssistenza(null); setAssistenzaSent(false); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#9e8c78" }}>✕</button>
+                        <button onClick={() => { setAssistenza(null); setAssistenzaSent(false); setAssistenzaError(null); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#9e8c78" }}>✕</button>
 
                         {assistenzaSent ? (
                             <div style={{ textAlign: "center", padding: "32px 0" }}>
                                 <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 28, fontWeight: 300, color: "#2a2520", marginBottom: 12 }}>Richiesta inviata</div>
-                                <p style={{ fontSize: 12, fontWeight: 300, color: "#9e8c78", lineHeight: 1.8 }}>Ti risponderemo entro 24 ore lavorative all indirizzo email associato al tuo account.</p>
+                                <p style={{ fontSize: 12, fontWeight: 300, color: "#9e8c78", lineHeight: 1.8 }}>Ti risponderemo entro 24 ore lavorative all&apos;indirizzo email associato al tuo account.</p>
                             </div>
                         ) : (
                             <>
@@ -211,14 +239,16 @@ export default function OrdiniPage() {
                                     />
                                 </div>
 
+                                {assistenzaError && (
+                                    <div style={{ marginBottom: 16, fontSize: 12, color: "#c97a6a", fontWeight: 300 }}>{assistenzaError}</div>
+                                )}
+
                                 <button
-                                    onClick={() => {
-                                        if (!assistenzaForm.motivo || !assistenzaForm.messaggio) return;
-                                        setAssistenzaSent(true);
-                                    }}
-                                    style={{ width: "100%", padding: "14px", background: "#2a2520", color: "#f5f0ea", border: "none", fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", cursor: "pointer" }}
+                                    onClick={handleAssistenzaSubmit}
+                                    disabled={assistenzaLoading || !assistenzaForm.motivo || !assistenzaForm.messaggio}
+                                    style={{ width: "100%", padding: "14px", background: assistenzaLoading ? "#9e8c78" : "#2a2520", color: "#f5f0ea", border: "none", fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", cursor: assistenzaLoading ? "not-allowed" : "pointer" }}
                                 >
-                                    Invia richiesta
+                                    {assistenzaLoading ? "Invio in corso..." : "Invia richiesta"}
                                 </button>
                             </>
                         )}

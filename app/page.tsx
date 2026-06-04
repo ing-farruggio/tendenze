@@ -1,7 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import Navbar from "./components/Navbar";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  discounted_price: number | null;
+  images: string[];
+  is_new: boolean;
+  category_main: string;
+}
 
 interface HomepageSettings {
   hero_title: string;
@@ -12,7 +25,7 @@ interface HomepageSettings {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<HomepageSettings>({
     hero_title: "L'eleganza è una forma di silenzio.",
     hero_subtitle: "Gioielli e borse creati per chi sa che il lusso vero non ha bisogno di urlare.",
@@ -22,11 +35,15 @@ export default function Home() {
   });
 
   useEffect(() => {
-    supabase.from("products").select("*").eq("is_published", true)
-        .order("created_at", { ascending: false }).limit(4)
-        .then(({ data }) => { if (data) setProducts(data); });
-    supabase.from("homepage_settings").select("*").single()
-        .then(({ data }) => { if (data) setSettings(data); });
+    const load = async () => {
+      const [{ data: prods }, { data: s }] = await Promise.all([
+        supabase.from("products").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
+        supabase.from("homepage_settings").select("*").single(),
+      ]);
+      if (prods) setProducts(prods);
+      if (s) setSettings(s);
+    };
+    load();
   }, []);
 
   useEffect(() => {
@@ -57,17 +74,17 @@ export default function Home() {
             </h1>
             <p className="hero-subtitle">{settings.hero_subtitle}</p>
             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <a href="/prodotti" style={{ background: "#2a2520", color: "#f5f0ea", padding: "14px 32px", fontSize: "11px", letterSpacing: "0.3em", textTransform: "uppercase", cursor: "pointer", fontWeight: 300, textDecoration: "none" }}>
+              <Link href="/prodotti" style={{ background: "#2a2520", color: "#f5f0ea", padding: "14px 32px", fontSize: "11px", letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 300, textDecoration: "none" }}>
                 Esplora
-              </a>
-              <a href="/prodotti?new=true" style={{ fontSize: "11px", letterSpacing: "0.25em", textTransform: "uppercase", cursor: "pointer", opacity: 0.7, fontWeight: 300, textDecoration: "none", color: "#2a2520" }}>
+              </Link>
+              <Link href="/prodotti?new=true" style={{ fontSize: "11px", letterSpacing: "0.25em", textTransform: "uppercase", opacity: 0.7, fontWeight: 300, textDecoration: "none", color: "#2a2520" }}>
                 New Arrivals →
-              </a>
+              </Link>
             </div>
           </div>
           <div className="hero-right">
             {settings.hero_image ? (
-                <img src={settings.hero_image} alt="Hero" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <Image src={settings.hero_image} alt="Hero" fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 50vw" />
             ) : (
                 <div style={{ fontSize: "120px", display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>👜</div>
             )}
@@ -96,17 +113,17 @@ export default function Home() {
               <div style={{ fontSize: "10px", fontWeight: 300, letterSpacing: "0.4em", textTransform: "uppercase", color: "#b89a6a", marginBottom: "12px" }}>— New Arrivals</div>
               <h2 style={{ fontFamily: "var(--font-cormorant), serif", fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 300, lineHeight: 1.1, color: "#2a2520" }}>Nuovi arrivi</h2>
             </div>
-            <a href="/prodotti" style={{ fontSize: "11px", fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", color: "#9e8c78", textDecoration: "none", whiteSpace: "nowrap" }}>Vedi tutto →</a>
+            <Link href="/prodotti" style={{ fontSize: "11px", fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", color: "#9e8c78", textDecoration: "none", whiteSpace: "nowrap" }}>Vedi tutto →</Link>
           </div>
           {products.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: "#9e8c78", fontSize: "13px", fontWeight: 300 }}>Nessun prodotto disponibile al momento.</div>
           ) : (
               <div className="products-grid">
                 {products.map((product, index) => (
-                    <a key={product.id} href={`/prodotti/${product.id}`} className={`product-card reveal reveal-delay-${index + 1}`} style={{ cursor: "pointer", textDecoration: "none" }}>
+                    <Link key={product.id} href={`/prodotti/${product.id}`} className={`product-card reveal reveal-delay-${index + 1}`} style={{ cursor: "pointer", textDecoration: "none" }}>
                       <div style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", marginBottom: "16px", position: "relative" }}>
                         {product.images?.[0] ? (
-                            <img src={product.images[0]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <Image src={product.images[0]} alt={product.name} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 50vw, 25vw" />
                         ) : (
                             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "60px" }}>
                               {product.category_main === "Accessori" ? "👜" : "💍"}
@@ -121,7 +138,7 @@ export default function Home() {
                         € {product.discounted_price ?? product.price}
                         {product.discounted_price && <span style={{ fontSize: "13px", color: "#c9b99a", textDecoration: "line-through", marginLeft: "8px" }}>€ {product.price}</span>}
                       </div>
-                    </a>
+                    </Link>
                 ))}
               </div>
           )}
@@ -167,7 +184,7 @@ export default function Home() {
                   <div style={{ fontSize: "10px", fontWeight: 300, letterSpacing: "0.4em", textTransform: "uppercase", color: "#d4b98a", marginBottom: "20px" }}>{col.title}</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {col.links.map(link => (
-                        <a key={link.label} href={link.href} style={{ fontSize: "12px", fontWeight: 300, color: "#c9b99a", textDecoration: "none" }}>{link.label}</a>
+                        <Link key={link.label} href={link.href} style={{ fontSize: "12px", fontWeight: 300, color: "#c9b99a", textDecoration: "none" }}>{link.label}</Link>
                     ))}
                   </div>
                 </div>
@@ -178,74 +195,6 @@ export default function Home() {
             <span>Crafted with care in Italy ✦</span>
           </div>
         </footer>
-
-        <style>{`
-        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @keyframes heroFadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes heroImageFade { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-
-        .hero-left > * { opacity: 0; animation: heroFadeUp 0.9s ease forwards; }
-        .hero-left > *:nth-child(1) { animation-delay: 0.1s; }
-        .hero-left > *:nth-child(2) { animation-delay: 0.25s; }
-        .hero-left > *:nth-child(3) { animation-delay: 0.4s; }
-        .hero-left > *:nth-child(4) { animation-delay: 0.55s; }
-        .hero-right { opacity: 0; animation: heroImageFade 1s ease 0.2s forwards; }
-
-        .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease, transform 0.8s ease; }
-        .reveal.visible { opacity: 1; transform: translateY(0); }
-        .reveal-delay-1 { transition-delay: 0.1s; }
-        .reveal-delay-2 { transition-delay: 0.2s; }
-        .reveal-delay-3 { transition-delay: 0.3s; }
-        .reveal-delay-4 { transition-delay: 0.4s; }
-
-        .product-card { transition: transform 0.3s ease; }
-        .product-card:hover { transform: translateY(-6px); }
-        .product-card div img { transition: transform 0.6s ease; }
-        .product-card:hover div img { transform: scale(1.05); }
-
-        /* HERO */
-        .hero-section { display: grid; grid-template-columns: 1fr 1fr; min-height: 90vh; }
-        .hero-left { display: flex; flex-direction: column; justify-content: center; padding: 80px 72px; }
-        .hero-title { font-family: var(--font-cormorant), serif; font-size: 72px; font-weight: 300; line-height: 1.05; color: #2a2520; margin-bottom: 32px; }
-        .hero-subtitle { font-size: 13px; line-height: 1.9; color: #9e8c78; max-width: 360px; margin-bottom: 48px; font-weight: 300; }
-        .hero-right { background: #e8ddd0; position: relative; overflow: hidden; min-height: 400px; }
-        .hero-badge { position: absolute; bottom: 40px; left: 32px; background: white; padding: 16px 24px; border-left: 3px solid #b89a6a; }
-
-        /* PRODUCTS */
-        .products-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
-        .section-padding { padding: 80px 72px; }
-
-        /* BANNER */
-        .banner-section { background: #2a2520; display: grid; grid-template-columns: 1fr 1fr; min-height: 400px; }
-        .banner-left { padding: 72px; display: flex; flex-direction: column; justify-content: center; }
-
-        /* FOOTER */
-        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; }
-
-        /* MOBILE */
-        @media (max-width: 768px) {
-          .hero-section { grid-template-columns: 1fr; min-height: auto; }
-          .hero-left { padding: 48px 24px; order: 2; }
-          .hero-title { font-size: 44px; }
-          .hero-subtitle { font-size: 13px; margin-bottom: 32px; }
-          .hero-right { order: 1; min-height: 280px; }
-          .hero-badge { bottom: 16px; left: 16px; padding: 12px 16px; }
-          .hero-badge > div:first-child { font-size: 22px !important; }
-
-          .section-padding { padding: 48px 20px; }
-          .products-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
-
-          .banner-section { grid-template-columns: 1fr; }
-          .banner-left { padding: 40px 24px; }
-
-          .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
-        }
-
-        @media (max-width: 480px) {
-          .hero-title { font-size: 36px; }
-          .footer-grid { grid-template-columns: 1fr; gap: 28px; }
-        }
-      `}</style>
       </main>
   );
 }

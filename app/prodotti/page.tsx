@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/app/components/Navbar";
@@ -127,7 +129,6 @@ function ProdottiContent() {
                             <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78", marginTop: 6 }}>{products.length} prodotti</div>
                         </div>
                         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                            {/* FILTRI MOBILE */}
                             {!isNew && !isSale && !searchParam && (
                                 <button className="filter-mobile-btn" onClick={() => setFilterOpen(!filterOpen)} style={{ padding: "10px 16px", background: "none", border: "1px solid rgba(184,154,106,0.3)", fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#2a2520", cursor: "pointer" }}>
                                     Filtri
@@ -169,10 +170,10 @@ function ProdottiContent() {
                     ) : (
                         <div className="prodotti-grid">
                             {products.map(product => (
-                                <a key={product.id} href={`/prodotti/${product.id}`} style={{ cursor: "pointer", textDecoration: "none" }}>
+                                <Link key={product.id} href={`/prodotti/${product.id}`} style={{ cursor: "pointer", textDecoration: "none" }}>
                                     <div style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", marginBottom: 12, position: "relative" }}>
                                         {product.images?.[0] ? (
-                                            <img src={product.images[0]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }} onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.04)")} onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")} />
+                                            <Image src={product.images[0]} alt={product.name} fill style={{ objectFit: "cover", transition: "transform 0.5s ease" }} sizes="(max-width: 768px) 50vw, 33vw" onMouseEnter={e => ((e.currentTarget as HTMLImageElement).style.transform = "scale(1.04)")} onMouseLeave={e => ((e.currentTarget as HTMLImageElement).style.transform = "scale(1)")} />
                                         ) : (
                                             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, opacity: 0.4 }}>◇</div>
                                         )}
@@ -185,27 +186,12 @@ function ProdottiContent() {
                                         € {product.discounted_price ?? product.price}
                                         {product.discounted_price && <span style={{ fontSize: 13, color: "#c9b99a", textDecoration: "line-through", marginLeft: 8 }}>€ {product.price}</span>}
                                     </div>
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
-
-            <style>{`
-        .sidebar-desktop { width: 240px; border-right: 1px solid rgba(184,154,106,0.15); padding: 32px 24px; background: #faf8f5; flex-shrink: 0; }
-        .prodotti-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .filter-mobile-btn { display: none; }
-        .filter-mobile-panel { display: block; }
-        @media (max-width: 768px) {
-          .sidebar-desktop { display: none; }
-          .filter-mobile-btn { display: block !important; }
-          .prodotti-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
-        }
-        @media (max-width: 480px) {
-          .prodotti-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        }
-      `}</style>
         </main>
     );
 }

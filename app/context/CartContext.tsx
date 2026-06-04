@@ -34,7 +34,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             const key = data.user ? `tendenze_cart_${data.user.id}` : "tendenze_cart_guest";
             setCartKey(key);
             const saved = localStorage.getItem(key);
-            setItems(saved ? JSON.parse(saved) : []);
+            try { setItems(saved ? JSON.parse(saved) : []); } catch { setItems([]); }
         };
 
         loadCart();
@@ -44,7 +44,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             const key = session?.user ? `tendenze_cart_${session.user.id}` : "tendenze_cart_guest";
             setCartKey(key);
             const saved = localStorage.getItem(key);
-            setItems(saved ? JSON.parse(saved) : []);
+            try { setItems(saved ? JSON.parse(saved) : []); } catch { setItems([]); }
         });
 
         return () => listener.subscription.unsubscribe();

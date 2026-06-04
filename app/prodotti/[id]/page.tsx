@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/app/context/CartContext";
 import Navbar from "@/app/components/Navbar";
@@ -21,6 +23,7 @@ interface Product {
 
 export default function ProductPage() {
     const { id } = useParams();
+    const router = useRouter();
     const { addItem } = useCart();
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
@@ -57,7 +60,7 @@ export default function ProductPage() {
     };
 
     const handleFavorite = async () => {
-        if (!userId) { window.location.href = "/login"; return; }
+        if (!userId) { router.push("/login"); return; }
         setFavLoading(true);
         if (isFavorite) {
             await supabase.from("favorites").delete().eq("user_id", userId).eq("product_id", id);
@@ -90,9 +93,9 @@ export default function ProductPage() {
             <Navbar />
 
             <div style={{ padding: "12px 24px", fontSize: 11, fontWeight: 300, color: "#9e8c78", letterSpacing: "0.1em", borderBottom: "1px solid rgba(184,154,106,0.1)", overflowX: "auto", whiteSpace: "nowrap" }}>
-                <a href="/" style={{ color: "#9e8c78", textDecoration: "none" }}>Home</a>
+                <Link href="/" style={{ color: "#9e8c78", textDecoration: "none" }}>Home</Link>
                 <span style={{ margin: "0 8px" }}>›</span>
-                <a href="/prodotti" style={{ color: "#9e8c78", textDecoration: "none" }}>Prodotti</a>
+                <Link href="/prodotti" style={{ color: "#9e8c78", textDecoration: "none" }}>Prodotti</Link>
                 <span style={{ margin: "0 8px" }}>›</span>
                 <span style={{ color: "#2a2520" }}>{product.name}</span>
             </div>
@@ -102,7 +105,7 @@ export default function ProductPage() {
                 <div className="product-gallery">
                     <div style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", position: "relative" }}>
                         {product.images?.[activeImage] ? (
-                            <img src={product.images[activeImage]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.3s ease" }} />
+                            <Image src={product.images[activeImage]} alt={product.name} fill style={{ objectFit: "cover", transition: "opacity 0.3s ease" }} sizes="(max-width: 768px) 100vw, 50vw" />
                         ) : (
                             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 80, opacity: 0.3 }}>◇</div>
                         )}
@@ -133,8 +136,8 @@ export default function ProductPage() {
                     {hasMultiple && (
                         <div className="gallery-thumbs" style={{ display: "flex", gap: 8, marginTop: 12, overflowX: "auto" }}>
                             {product.images.map((img, i) => (
-                                <div key={i} onClick={() => setActiveImage(i)} style={{ width: 70, height: 90, overflow: "hidden", cursor: "pointer", border: activeImage === i ? "2px solid #b89a6a" : "2px solid transparent", transition: "border-color 0.2s", flexShrink: 0 }}>
-                                    <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                <div key={i} onClick={() => setActiveImage(i)} style={{ width: 70, height: 90, overflow: "hidden", cursor: "pointer", border: activeImage === i ? "2px solid #b89a6a" : "2px solid transparent", transition: "border-color 0.2s", flexShrink: 0, position: "relative" }}>
+                                    <Image src={img} alt="" fill style={{ objectFit: "cover" }} sizes="70px" />
                                 </div>
                             ))}
                         </div>
@@ -176,10 +179,12 @@ export default function ProductPage() {
 
                     <div style={{ paddingTop: 24, borderTop: "1px solid rgba(184,154,106,0.15)", marginBottom: 24 }}>
                         <div style={{ fontSize: 10, fontWeight: 400, letterSpacing: "0.3em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 12 }}>Dettagli</div>
-                        {[
+                        {(
+                        [
                             product.category_sub ? { label: "Sottocategoria", value: product.category_sub } : null,
                             { label: "Disponibilità", value: `${product.stock} pezzi` },
-                        ].filter(Boolean).map((item: any) => (
+                        ].filter((i): i is { label: string; value: string } => i !== null)
+                    ).map((item) => (
                             <div key={item.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 300, color: "#9e8c78", paddingBottom: 10, borderBottom: "1px solid rgba(184,154,106,0.08)" }}>
                                 <span>{item.label}</span>
                                 <span style={{ color: "#2a2520" }}>{item.value}</span>
@@ -203,22 +208,8 @@ export default function ProductPage() {
             </div>
 
             <div style={{ padding: "0 24px 48px" }}>
-                <a href="/prodotti" style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9e8c78", textDecoration: "none" }}>← Torna ai prodotti</a>
+                <Link href="/prodotti" style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9e8c78", textDecoration: "none" }}>← Torna ai prodotti</Link>
             </div>
-
-            <style>{`
-        .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding: 48px 72px; max-width: 1400px; margin: 0 auto; }
-        .product-info { padding-top: 8px; }
-        .gallery-arrow { opacity: 0; transition: opacity 0.2s ease; }
-        .product-gallery:hover .gallery-arrow { opacity: 1; }
-        .gallery-dots { display: none; }
-        @media (max-width: 768px) {
-          .product-layout { grid-template-columns: 1fr; gap: 32px; padding: 24px 20px; }
-          .gallery-arrow { opacity: 1 !important; display: flex !important; }
-          .gallery-dots { display: flex !important; }
-          .gallery-thumbs { display: none !important; }
-        }
-      `}</style>
         </main>
     );
 }
