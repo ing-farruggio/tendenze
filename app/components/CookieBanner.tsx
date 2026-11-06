@@ -5,20 +5,25 @@ export default function CookieBanner() {
     const [visible, setVisible] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
 
+    // localStorage SOLLEVA (non ritorna null) su Safari con i cookie bloccati,
+    // in certe WebView e a quota esaurita. Questo componente sta nel root
+    // layout: senza try/catch l'eccezione faceva pagina bianca su tutto il sito.
     useEffect(() => {
-        const consent = localStorage.getItem("tendenze_cookie_consent");
-        if (!consent) setVisible(true);
+        try {
+            const consent = localStorage.getItem("tendenze_cookie_consent");
+            if (!consent) setVisible(true);
+        } catch {
+            setVisible(true);
+        }
     }, []);
 
-    const accept = () => {
-        localStorage.setItem("tendenze_cookie_consent", "accepted");
+    const save = (value: "accepted" | "rejected") => {
+        try { localStorage.setItem("tendenze_cookie_consent", value); } catch { /* scelta non persistita */ }
         setVisible(false);
     };
 
-    const reject = () => {
-        localStorage.setItem("tendenze_cookie_consent", "rejected");
-        setVisible(false);
-    };
+    const accept = () => save("accepted");
+    const reject = () => save("rejected");
 
     if (!visible) return null;
 
@@ -27,11 +32,11 @@ export default function CookieBanner() {
             position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999,
             background: "rgba(42,37,32,0.97)", backdropFilter: "blur(12px)",
             borderTop: "1px solid rgba(184,154,106,0.2)",
-            padding: "24px 48px",
+            padding: "24px clamp(16px, 4vw, 48px)",
         }}>
             <div style={{ maxWidth: 1200, margin: "0 auto" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 32, flexWrap: "wrap" }}>
-                    <div style={{ flex: 1, minWidth: 280 }}>
+                    <div style={{ flex: 1, minWidth: "min(280px, 100%)" }}>
                         <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.4em", textTransform: "uppercase", color: "#b89a6a", marginBottom: 10 }}>
                             Informativa sui cookie
                         </div>

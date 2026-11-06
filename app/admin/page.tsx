@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { formatPrice } from "@/lib/format";
 
 type Section = "dashboard" | "ordini" | "prodotti" | "clienti" | "homepage";
 type View = "list" | "add" | "edit";
@@ -373,8 +375,8 @@ function Prodotti() {
                                     {p.category_gender} — {p.category_main}{p.category_sub ? ` / ${p.category_sub}` : ""}
                                 </td>
                                 <td style={{ padding: "12px 16px", color: "#e8ddd0" }}>
-                                    € {p.discounted_price ?? p.price}
-                                    {p.discounted_price && <span style={{ color: "#7a7060", textDecoration: "line-through", marginLeft: 6, fontSize: 11 }}>€ {p.price}</span>}
+                                    {formatPrice(p.discounted_price ?? p.price)}
+                                    {p.discounted_price != null && <span style={{ color: "#7a7060", textDecoration: "line-through", marginLeft: 6, fontSize: 11 }}>{formatPrice(p.price)}</span>}
                                 </td>
                                 <td style={{ padding: "12px 16px", color: p.stock <= 2 ? "#c97a6a" : "#7a7060" }}>{p.stock} pz</td>
                                 <td style={{ padding: "12px 16px" }}>
@@ -402,8 +404,17 @@ function Prodotti() {
         </div>
     );
 }
+interface Client {
+    id: string;
+    email: string | null;
+    nome: string | null;
+    cognome: string | null;
+    created_at: string | null;
+    last_sign_in_at: string | null;
+}
+
 function Clienti() {
-    const [clients, setClients] = useState<any[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
 
@@ -657,8 +668,31 @@ function Homepage() {
     );
 }
 export default function AdminPage() {
+    const router = useRouter();
+    // ATTENZIONE: questo e' un gate di superficie, non una misura di sicurezza.
+    // La chiave anon sta nel bundle browser, quindi chiunque puo' parlare
+    // direttamente con PostgREST saltando del tutto questa pagina. Il confine
+    // vero sono le policy RLS su products / homepage_settings / users_view e
+    // sul bucket storage "products": senza quelle, nascondere la UI non
+    // protegge nulla.
+    const [access, setAccess] = useState<"checking" | "granted" | "denied">("checking");
     const [section, setSection] = useState<Section>("dashboard");
     const [search, setSearch] = useState("");
+
+    useEffect(() => {
+        supabase.auth.getUser()
+            .then(({ data }) => {
+                const u = data.user;
+                if (!u) { router.replace("/login?redirect=/admin"); return; }
+                // Solo app_metadata: user_metadata e' scrivibile dall'utente
+                // stesso con supabase.auth.updateUser({ data: ... }), quindi
+                // fidarsene significherebbe lasciare che chiunque si promuova
+                // amministratore da solo. app_metadata lo tocca solo il server.
+                const isAdmin = (u.app_metadata as Record<string, unknown> | undefined)?.role === "admin";
+                setAccess(isAdmin ? "granted" : "denied");
+            })
+            .catch(() => setAccess("denied"));
+    }, [router]);
 
     const navItems: { key: Section; icon: string; label: string }[] = [
         { key: "dashboard", icon: "◈", label: "Dashboard" },
@@ -667,6 +701,25 @@ export default function AdminPage() {
         { key: "clienti",   icon: "○", label: "Clienti" },
         { key: "homepage", icon: "⊞", label: "Homepage" },
     ];
+
+    if (access !== "granted") {
+        return (
+            <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif", background: "#0f0e0c", color: "#e8ddd0", padding: 24, textAlign: "center" }}>
+                <div style={{ maxWidth: 420 }}>
+                    {access === "checking" ? (
+                        <div style={{ fontSize: 13, color: "#7a7060" }}>Verifica accesso...</div>
+                    ) : (
+                        <>
+                            <div style={{ fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 300, marginBottom: 12 }}>Accesso riservato</div>
+                            <p style={{ fontSize: 13, color: "#7a7060", lineHeight: 1.7 }}>
+                                Questo account non ha i permessi di amministratore.
+                            </p>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "sans-serif", background: "#0f0e0c", color: "#e8ddd0" }}>

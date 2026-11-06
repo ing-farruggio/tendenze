@@ -20,7 +20,10 @@ export default function LoginPage() {
             setLoading(false);
         } else {
             const params = new URLSearchParams(window.location.search);
-            const redirect = params.get("redirect") ?? "/";
+            // Solo path interni: un redirect assoluto rendeva /login un open
+            // redirect utilizzabile per phishing dal dominio autentico.
+            const raw = params.get("redirect");
+            const redirect = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
             router.replace(redirect);
         }
     };

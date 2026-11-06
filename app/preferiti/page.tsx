@@ -1,8 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/app/components/Navbar";
 import { useCart } from "@/app/context/CartContext";
+import { formatPrice } from "@/lib/format";
 
 interface Product {
     id: string;
@@ -17,27 +20,47 @@ interface Product {
 }
 
 export default function PreferitivPage() {
+    const router = useRouter();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const { addItem } = useCart();
 
     useEffect(() => {
         const load = async () => {
             const { data: userData } = await supabase.auth.getUser();
-            if (!userData.user) { window.location.href = "/login"; return; }
+            if (!userData.user) {
+                // router.replace invece di window.location: niente reload pieno,
+                // e il redirect riporta qui dopo il login.
+                router.replace("/login?redirect=/preferiti");
+                setLoading(false);
+                return;
+            }
             setUserId(userData.user.id);
-            const { data: favs } = await supabase.from("favorites").select("product_id, products(*)").eq("user_id", userData.user.id);
-            if (favs) setProducts(favs.map((f: any) => f.products).filter(Boolean));
+            const { data: favs, error } = await supabase
+                .from("favorites")
+                .select("product_id, products(*)")
+                .eq("user_id", userData.user.id);
+            // Prima l'errore veniva ignorato e la pagina diceva "non hai
+            // preferiti": un guasto sembrava una lista vuota.
+            if (error) {
+                setLoadError(true);
+            } else {
+                const rows = (favs ?? []) as unknown as { products: Product | null }[];
+                setProducts(rows.map(f => f.products).filter((p): p is Product => Boolean(p)));
+            }
             setLoading(false);
         };
         load();
-    }, []);
+    }, [router]);
 
     const removeFavorite = async (productId: string) => {
         if (!userId) return;
-        await supabase.from("favorites").delete().eq("user_id", userId).eq("product_id", productId);
-        setProducts(prev => prev.filter(p => p.id !== productId));
+        // L'elemento veniva tolto dalla UI comunque: se la delete falliva
+        // ricompariva al refresh.
+        const { error } = await supabase.from("favorites").delete().eq("user_id", userId).eq("product_id", productId);
+        if (!error) setProducts(prev => prev.filter(p => p.id !== productId));
     };
 
     return (
@@ -51,17 +74,19 @@ export default function PreferitivPage() {
 
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "80px 0", color: "#9e8c78", fontSize: 13 }}>Caricamento...</div>
+                ) : loadError ? (
+                    <div style={{ textAlign: "center", padding: "80px 0", color: "#c97a6a", fontSize: 13 }}>Non siamo riusciti a caricare i preferiti. Riprova tra poco.</div>
                 ) : products.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "80px 0" }}>
                         <div style={{ fontSize: 64, marginBottom: 24, opacity: 0.2 }}>♡</div>
                         <p style={{ fontSize: 13, fontWeight: 300, color: "#9e8c78", marginBottom: 32 }}>Non hai ancora prodotti nei preferiti.</p>
-                        <a href="/prodotti" style={{ background: "#2a2520", color: "#f5f0ea", padding: "16px 40px", fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", textDecoration: "none" }}>Scopri i prodotti</a>
+                        <Link href="/prodotti" style={{ background: "#2a2520", color: "#f5f0ea", padding: "16px 40px", fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", textDecoration: "none" }}>Scopri i prodotti</Link>
                     </div>
                 ) : (
                     <div className="preferiti-grid">
                         {products.map(product => (
                             <div key={product.id}>
-                                <a href={`/prodotti/${product.id}`} style={{ textDecoration: "none" }}>
+                                <Link href={`/prodotti/${product.id}`} style={{ textDecoration: "none" }}>
                                     <div style={{ background: "#e8ddd0", aspectRatio: "3/4", overflow: "hidden", marginBottom: 12, position: "relative" }}>
                                         {product.images?.[0] ? (
                                             <img src={product.images[0]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }}
@@ -75,13 +100,13 @@ export default function PreferitivPage() {
                                     <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 17, fontWeight: 300, color: "#2a2520", marginBottom: 4 }}>{product.name}</div>
                                     <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78", marginBottom: 8 }}>{product.category_main}</div>
                                     <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 18, fontWeight: 300, color: "#2a2520", marginBottom: 12 }}>
-                                        € {product.discounted_price ?? product.price}
-                                        {product.discounted_price && <span style={{ fontSize: 13, color: "#c9b99a", textDecoration: "line-through", marginLeft: 8 }}>€ {product.price}</span>}
+                                        {formatPrice(product.discounted_price ?? product.price)}
+                                        {product.discounted_price != null && <span style={{ fontSize: 13, color: "#c9b99a", textDecoration: "line-through", marginLeft: 8 }}>{formatPrice(product.price)}</span>}
                                     </div>
-                                </a>
+                                </Link>
                                 <div style={{ display: "flex", gap: 8 }}>
                                     <button
-                                        onClick={() => addItem({ id: product.id, name: product.name, price: product.price, discounted_price: product.discounted_price, image: product.images?.[0] ?? "" })}
+                                        onClick={() => addItem({ id: product.id, name: product.name, price: product.price, discounted_price: product.discounted_price, image: product.images?.[0] ?? "", stock: product.stock })}
                                         disabled={product.stock === 0}
                                         style={{ flex: 1, padding: "12px 8px", background: "#2a2520", color: "#f5f0ea", border: "none", fontSize: 10, fontWeight: 300, letterSpacing: "0.15em", textTransform: "uppercase", cursor: product.stock === 0 ? "not-allowed" : "pointer" }}
                                     >

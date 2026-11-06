@@ -3,10 +3,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/components/Navbar";
+import type { User } from "@supabase/supabase-js";
 
 export default function ProfiloPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
@@ -30,9 +31,10 @@ export default function ProfiloPage() {
       setLoading(false);
     };
     load();
-  }, []);
+  }, [router]);
 
   const handleSaveProfile = async () => {
+    if (!user) return;
     setSaving(true); setSuccess(""); setError("");
     const { error: authError } = await supabase.auth.updateUser({ data: { nome: form.nome, cognome: form.cognome } });
     if (authError) { setError(authError.message); setSaving(false); return; }
@@ -46,7 +48,8 @@ export default function ProfiloPage() {
     setSuccess(""); setError("");
     if (!passwordForm.current) { setError("Inserisci la password attuale."); return; }
     if (passwordForm.new !== passwordForm.confirm) { setError("Le nuove password non coincidono."); return; }
-    if (passwordForm.new.length < 6) { setError("La password deve essere di almeno 6 caratteri."); return; }
+    if (passwordForm.new.length < 8) { setError("La password deve essere di almeno 8 caratteri."); return; }
+    if (!user?.email) return;
     setSaving(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: passwordForm.current });
     if (signInError) { setError("Password attuale non corretta."); setSaving(false); return; }
@@ -57,6 +60,7 @@ export default function ProfiloPage() {
   };
 
   const handleDownloadData = () => {
+    if (!user) return;
     const data = { nome: user.user_metadata?.nome, cognome: user.user_metadata?.cognome, email: user.email, telefono: form.telefono, indirizzo: { via: form.via, citta: form.citta, cap: form.cap, provincia: form.provincia, paese: form.paese }, account_creato: new Date(user.created_at).toLocaleDateString("it-IT") };
     const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>I miei dati - Tendenze</title><style>body{font-family:Georgia,serif;color:#2a2520;max-width:600px;margin:60px auto;padding:0 24px}h1{font-size:28px;font-weight:300;letter-spacing:0.2em;margin-bottom:4px}.sub{font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#b89a6a;margin-bottom:40px}.sec{margin-bottom:28px;border-top:1px solid rgba(184,154,106,0.3);padding-top:20px}.sec-title{font-size:10px;letter-spacing:0.4em;text-transform:uppercase;color:#b89a6a;margin-bottom:12px}.row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:300}.label{color:#9e8c78}.footer{margin-top:48px;font-size:11px;color:#9e8c78;border-top:1px solid rgba(184,154,106,0.2);padding-top:16px}</style></head><body><h1>TENDENZE</h1><div class="sub">I miei dati personali</div><div class="sec"><div class="sec-title">Dati personali</div><div class="row"><span class="label">Nome</span><span>${data.nome||"—"}</span></div><div class="row"><span class="label">Cognome</span><span>${data.cognome||"—"}</span></div><div class="row"><span class="label">Email</span><span>${data.email}</span></div><div class="row"><span class="label">Telefono</span><span>${data.telefono||"—"}</span></div></div><div class="sec"><div class="sec-title">Indirizzo</div><div class="row"><span class="label">Via</span><span>${data.indirizzo.via||"—"}</span></div><div class="row"><span class="label">Citta</span><span>${data.indirizzo.citta||"—"}</span></div><div class="row"><span class="label">CAP</span><span>${data.indirizzo.cap||"—"}</span></div><div class="row"><span class="label">Paese</span><span>${data.indirizzo.paese||"—"}</span></div></div><div class="sec"><div class="sec-title">Account</div><div class="row"><span class="label">Creato il</span><span>${data.account_creato}</span></div></div><div class="footer">Generato il ${new Date().toLocaleDateString("it-IT")} — Tendenze Store</div></body></html>`;
     const blob = new Blob([html], { type: "text/html" });
@@ -67,15 +71,28 @@ export default function ProfiloPage() {
 
   const handleDeleteAccount = async () => {
     setError("");
+    if (!user?.email) return;
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
     if (signInError) { setError("Password non corretta."); return; }
-    await supabase.from("favorites").delete().eq("user_id", user.id);
-    await supabase.from("user_profiles").delete().eq("id", user.id);
+    // Gli esiti venivano ignorati: un rifiuto RLS portava comunque a signOut
+    // e a una schermata di successo, con i dati ancora a database.
+    const { error: favError } = await supabase.from("favorites").delete().eq("user_id", user.id);
+    const { error: profileError } = await supabase.from("user_profiles").delete().eq("id", user.id);
+    if (favError || profileError) {
+      setError("Non siamo riusciti a cancellare tutti i tuoi dati. Scrivici e ce ne occupiamo noi.");
+      return;
+    }
+    // NOTA: la riga in auth.users (email, nome, cognome) NON viene rimossa —
+    // dal browser e' impossibile, serve auth.admin.deleteUser() da un Route
+    // Handler che detenga SUPABASE_SECRET_KEY. Finche' non esiste, la promessa
+    // di cancellazione totale fatta nella UI non e' mantenuta.
     await supabase.auth.signOut();
     router.replace("/");
   };
 
   if (loading) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78" }}>Caricamento...</div>;
+  // Il redirect e' gia' partito nell'effect: non renderizzare con user null.
+  if (!user) return null;
 
   const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 16px", border: "1px solid rgba(184,154,106,0.2)", background: "#faf8f5", fontSize: 13, fontWeight: 300, outline: "none", fontFamily: "var(--font-jost), sans-serif", boxSizing: "border-box", color: "#2a2520" };
   const labelStyle: React.CSSProperties = { display: "block", fontSize: 10, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", color: "#9e8c78", marginBottom: 8 };

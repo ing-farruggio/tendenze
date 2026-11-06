@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/app/components/Navbar";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { formatPrice } from "@/lib/format";
 
 const ordini_fake = [
     {
@@ -62,6 +64,8 @@ const statoIcon: Record<string, string> = {
 };
 
 export default function OrdiniPage() {
+    const router = useRouter();
+    const [authChecked, setAuthChecked] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
     const [assistenza, setAssistenza] = useState<string | null>(null);
     const [assistenzaForm, setAssistenzaForm] = useState({ motivo: "", messaggio: "" });
@@ -70,14 +74,24 @@ export default function OrdiniPage() {
     const [assistenzaError, setAssistenzaError] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
 
+    // La pagina non aveva alcuna guardia: un visitatore anonimo la apriva e
+    // poteva inviare richieste di assistenza con user_id null.
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
-            if (data.user) setUserId(data.user.id);
+            if (data.user) {
+                setUserId(data.user.id);
+                setAuthChecked(true);
+            } else {
+                router.replace("/login?redirect=/ordini");
+            }
         });
-    }, []);
+    }, [router]);
 
     const handleAssistenzaSubmit = async () => {
         if (!assistenzaForm.motivo || !assistenzaForm.messaggio) return;
+        // Senza questo, un click prima che getUser() risolvesse inviava il
+        // ticket con user_id null e l'utente lo perdeva.
+        if (!userId) { setAssistenzaError("Sessione non pronta. Riprova tra un istante."); return; }
         setAssistenzaLoading(true);
         setAssistenzaError(null);
         const { error } = await supabase.from("support_requests").insert({
@@ -93,6 +107,15 @@ export default function OrdiniPage() {
             setAssistenzaSent(true);
         }
     };
+
+    if (!authChecked) {
+        return (
+            <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
+                <Navbar />
+                <div style={{ textAlign: "center", padding: "120px 24px", color: "#9e8c78", fontSize: 13, fontWeight: 300 }}>Caricamento...</div>
+            </main>
+        );
+    }
 
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
@@ -126,7 +149,7 @@ export default function OrdiniPage() {
                                             <span style={{ fontSize: 10, fontWeight: 400, letterSpacing: "0.15em", textTransform: "uppercase", color: statoColor[ordine.stato] }}>{ordine.stato}</span>
                                         </div>
                                     </div>
-                                    <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20, fontWeight: 300, color: "#2a2520" }}>€ {ordine.totale.toFixed(2)}</div>
+                                    <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20, fontWeight: 300, color: "#2a2520" }}>{formatPrice(ordine.totale)}</div>
                                 </div>
                             </div>
 
@@ -144,7 +167,7 @@ export default function OrdiniPage() {
                                                     <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78", marginBottom: 4 }}>{p.categoria}</div>
                                                     <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78" }}>Quantità: {p.quantita}</div>
                                                 </div>
-                                                <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 18, fontWeight: 300, color: "#2a2520" }}>€ {p.prezzo.toFixed(2)}</div>
+                                                <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 18, fontWeight: 300, color: "#2a2520" }}>{formatPrice(p.prezzo)}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -157,7 +180,7 @@ export default function OrdiniPage() {
                                         </div>
                                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 400, color: "#2a2520" }}>
                                             <span>Totale</span>
-                                            <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20 }}>€ {ordine.totale.toFixed(2)}</span>
+                                            <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20 }}>{formatPrice(ordine.totale)}</span>
                                         </div>
                                     </div>
 

@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/app/context/CartContext";
 import Navbar from "@/app/components/Navbar";
+import { formatPrice } from "@/lib/format";
 
 interface Product {
     id: string;
@@ -32,42 +33,54 @@ export default function ProductPage() {
     const [isFavorite, setIsFavorite] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    const [authReady, setAuthReady] = useState(false);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
         if (!id) return;
         setLoading(true);
         setProduct(null);
         setActiveImage(0);
-        supabase.from("products").select("*").eq("id", id).single()
-            .then(({ data }) => { setProduct(data); setLoading(false); });
+        // Mancava il filtro is_published: le bozze erano pubbliche a chiunque
+        // conoscesse l'UUID. .single() dava anche un 406 quando la riga non c'e'.
+        supabase.from("products").select("*").eq("id", id).eq("is_published", true).maybeSingle()
+            .then(({ data, error }) => { setProduct(error ? null : data); setLoadError(!!error); setLoading(false); });
     }, [id]);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
+            setAuthReady(true);
             if (data.user) {
                 setUserId(data.user.id);
-                supabase.from("favorites").select("id").eq("user_id", data.user.id).eq("product_id", id).single()
+                // .maybeSingle(): l'assenza del preferito e' un esito normale,
+                // e con righe duplicate .single() falliva mostrando "non salvato".
+                supabase.from("favorites").select("id").eq("user_id", data.user.id).eq("product_id", id).limit(1).maybeSingle()
                     .then(({ data: fav }) => setIsFavorite(!!fav));
             }
-        });
+        }).catch(() => setAuthReady(true));
     }, [id]);
 
     const handleAddToCart = () => {
         if (!product) return;
-        addItem({ id: product.id, name: product.name, price: product.price, discounted_price: product.discounted_price, image: product.images?.[0] ?? "" });
+        addItem({ id: product.id, name: product.name, price: product.price, discounted_price: product.discounted_price, image: product.images?.[0] ?? "", stock: product.stock });
         setAdded(true);
         setTimeout(() => setAdded(false), 2000);
     };
 
     const handleFavorite = async () => {
-        if (!userId) { router.push("/login"); return; }
+        // Prima, cliccando il cuore prima che getUser() risolvesse, un utente
+        // gia' loggato veniva rispedito al login e il preferito andava perso.
+        if (!authReady) return;
+        if (!userId) { router.push(`/login?redirect=/prodotti/${id}`); return; }
         setFavLoading(true);
+        // L'esito non veniva guardato: un rifiuto RLS mostrava comunque
+        // "Nei preferiti" su qualcosa che non era stato salvato.
         if (isFavorite) {
-            await supabase.from("favorites").delete().eq("user_id", userId).eq("product_id", id);
-            setIsFavorite(false);
+            const { error } = await supabase.from("favorites").delete().eq("user_id", userId).eq("product_id", id);
+            if (!error) setIsFavorite(false);
         } else {
-            await supabase.from("favorites").insert({ user_id: userId, product_id: id });
-            setIsFavorite(true);
+            const { error } = await supabase.from("favorites").insert({ user_id: userId, product_id: id });
+            if (!error) setIsFavorite(true);
         }
         setFavLoading(false);
     };
@@ -83,9 +96,12 @@ export default function ProductPage() {
     };
 
     if (loading) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78", fontSize: 13 }}>Caricamento...</div>;
-    if (!product) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#9e8c78", fontSize: 13 }}>Prodotto non trovato.</div>;
+    if (loadError) return <div style={{ background: "#faf8f5", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-jost), sans-serif", color: "#c97a6a", fontSize: 13 }}>Non siamo riusciti a caricare il prodotto. Riprova tra poco.</div>;
+    if (!product) notFound();
 
-    const discount = product.discounted_price ? Math.round((1 - product.discounted_price / product.price) * 100) : null;
+    const discount = product.discounted_price != null && product.price > 0
+        ? Math.round((1 - product.discounted_price / product.price) * 100)
+        : null;
     const hasMultiple = product.images?.length > 1;
 
     return (
@@ -153,11 +169,11 @@ export default function ProductPage() {
                     </h1>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
             <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: "clamp(28px, 4vw, 36px)", fontWeight: 300, color: "#2a2520" }}>
-              € {(product.discounted_price ?? product.price).toFixed(2)}
+              {formatPrice(product.discounted_price ?? product.price)}
             </span>
                         {product.discounted_price && (
                             <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 22, color: "#c9b99a", textDecoration: "line-through" }}>
-                € {product.price.toFixed(2)}
+                {formatPrice(product.price)}
               </span>
                         )}
                     </div>

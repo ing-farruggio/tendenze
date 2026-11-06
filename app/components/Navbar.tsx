@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import { supabase } from "@/lib/supabase";
+import { formatPrice } from "@/lib/format";
+import type { User } from "@supabase/supabase-js";
 
 const menuItems = [
   { label: "Donna", sub: ["Gioielli", "Bijoux", "Orologi", "Abbigliamento", "Accessori"], gender: "donna" },
@@ -25,16 +27,25 @@ const SUBCATEGORIES: Record<string, Record<string, string[]>> = {
   },
 };
 
+interface SearchResult {
+  id: string;
+  name: string;
+  price: number;
+  discounted_price: number | null;
+  images: string[] | null;
+  category_main: string | null;
+}
+
 export default function Navbar() {
   const router = useRouter();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [userMenu, setUserMenu] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const { count } = useCart();
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,14 +75,19 @@ export default function Navbar() {
   }, [searchOpen]);
 
   useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults([]); return; }
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchLoading(false); return; }
+    // setSearchLoading stava dentro il timeout: per i primi 300ms di digitazione
+    // la tendina mostrava "Nessun prodotto trovato" a ogni carattere.
+    setSearchLoading(true);
     searchTimeoutRef.current = setTimeout(async () => {
-      setSearchLoading(true);
       const { data } = await supabase.from("products").select("id, name, price, discounted_price, images, category_main").eq("is_published", true).ilike("name", `%${searchQuery}%`).limit(6);
       setSearchResults(data ?? []);
       setSearchLoading(false);
     }, 300);
+    // Senza cleanup un timer in volo ripopolava i risultati su un campo gia'
+    // svuotato, e sopravviveva allo smontaggio del componente.
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [searchQuery]);
 
   const handleLogout = async () => {
@@ -271,7 +287,7 @@ export default function Navbar() {
                                   <div>
                                     <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 15, fontWeight: 300, color: "#2a2520", marginBottom: 2 }}>{product.name}</div>
                                     <div style={{ fontSize: 10, fontWeight: 300, color: "#9e8c78", letterSpacing: "0.1em", marginBottom: 2 }}>{product.category_main}</div>
-                                    <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 15, fontWeight: 300, color: "#2a2520" }}>€ {product.discounted_price ?? product.price}</div>
+                                    <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 15, fontWeight: 300, color: "#2a2520" }}>{formatPrice(product.discounted_price ?? product.price)}</div>
                                   </div>
                                 </Link>
                             ))}

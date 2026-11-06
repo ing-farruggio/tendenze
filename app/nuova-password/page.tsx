@@ -10,25 +10,66 @@ export default function NuovaPassword() {
     const [confirm, setConfirm] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    // Il gate era un no-op: il form accettava qualunque sessione presente in
+    // localStorage, quindi su un PC condiviso bastava aprire questa pagina per
+    // cambiare la password dell'utente ancora loggato.
+    const [status, setStatus] = useState<"checking" | "allowed" | "denied">("checking");
 
     useEffect(() => {
-        supabase.auth.onAuthStateChange((event) => {
-            if (event === "PASSWORD_RECOVERY") {
-                // utente autenticato tramite link email
-            }
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const query = new URLSearchParams(window.location.search);
+        const fromRecoveryLink =
+            hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code");
+
+        const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+            if (event === "PASSWORD_RECOVERY") setStatus("allowed");
         });
+
+        let cancelled = false;
+        if (!fromRecoveryLink) {
+            setStatus("denied");
+        } else {
+            // Il client deve ancora processare il fragment / scambiare il code.
+            (async () => {
+                for (let i = 0; i < 20 && !cancelled; i++) {
+                    const { data } = await supabase.auth.getSession();
+                    if (data.session) { if (!cancelled) setStatus("allowed"); return; }
+                    await new Promise(r => setTimeout(r, 150));
+                }
+                if (!cancelled) setStatus("denied");
+            })();
+        }
+
+        return () => { cancelled = true; listener.subscription.unsubscribe(); };
     }, []);
 
     const handleSubmit = async () => {
         if (password !== confirm) { setError("Le password non coincidono."); return; }
-        if (password.length < 6) { setError("La password deve essere di almeno 6 caratteri."); return; }
+        if (password.length < 8) { setError("La password deve essere di almeno 8 caratteri."); return; }
+        if (status !== "allowed") { setError("Link di recupero non valido o scaduto."); return; }
         setLoading(true);
         setError("");
         const { error } = await supabase.auth.updateUser({ password });
         setLoading(false);
-        if (error) setError(error.message);
+        if (error) setError("Non e' stato possibile aggiornare la password. Richiedi un nuovo link.");
         else router.replace("/login");
     };
+
+    const shell = (title: string, body: string) => (
+        <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            <Navbar />
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 24px" }}>
+                <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+                    <h1 style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 32, fontWeight: 300, color: "#2a2520", marginBottom: 16 }}>{title}</h1>
+                    <p style={{ fontSize: 13, fontWeight: 300, color: "#7a7060", marginBottom: 24 }}>{body}</p>
+                    <a href="/recupera-password" style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.3em", textTransform: "uppercase", color: "#b89a6a" }}>Richiedi un nuovo link</a>
+                </div>
+            </div>
+        </main>
+    );
+
+    if (status === "checking") return shell("Verifica in corso", "Stiamo controllando il link di recupero.");
+    if (status === "denied") return shell("Link non valido", "Apri questa pagina dal link che ti abbiamo inviato via email.");
 
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh", display: "flex", flexDirection: "column" }}>

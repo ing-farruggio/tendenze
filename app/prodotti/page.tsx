@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/app/components/Navbar";
+import { formatPrice } from "@/lib/format";
 
 interface Product {
     id: string;
@@ -38,24 +39,32 @@ const CATEGORIES: Record<string, Record<string, string[]>> = {
 
 function ProdottiContent() {
     const searchParams = useSearchParams();
-    const genderParam = searchParams.get("gender") as "donna" | "uomo" | null;
+    // Il cast "as" era una bugia al compilatore: la query string e' input
+    // arbitrario e un valore fuori lista faceva esplodere CATEGORIES[gender].
+    const rawGender = searchParams.get("gender");
+    const genderParam = rawGender === "donna" || rawGender === "uomo" ? rawGender : null;
     const mainParam = searchParams.get("main");
+    const subParam = searchParams.get("sub");
     const isNew = searchParams.get("new") === "true";
     const isSale = searchParams.get("sale") === "true";
     const searchParam = searchParams.get("search");
 
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [gender, setGender] = useState<"donna" | "uomo">(genderParam ?? "donna");
     const [activeMain, setActiveMain] = useState<string | null>(mainParam ?? null);
-    const [activeSub, setActiveSub] = useState<string | null>(null);
+    const [activeSub, setActiveSub] = useState<string | null>(subParam ?? null);
     const [sort, setSort] = useState("newest");
     const [filterOpen, setFilterOpen] = useState(false);
 
+    // Senza il ramo "else" i filtri restavano appiccicati: da Uomo/Accessori
+    // un click su Donna manteneva activeMain = "Accessori".
     useEffect(() => {
         if (genderParam) setGender(genderParam);
-        if (mainParam) setActiveMain(mainParam);
-    }, [genderParam, mainParam]);
+        setActiveMain(mainParam ?? null);
+        setActiveSub(subParam ?? null);
+    }, [genderParam, mainParam, subParam]);
 
     useEffect(() => {
         const load = async () => {
@@ -63,21 +72,22 @@ function ProdottiContent() {
             let query = supabase.from("products").select("*").eq("is_published", true);
             if (!isNew && !isSale && !searchParam) query = query.eq("category_gender", gender);
             if (activeMain && !isNew && !isSale && !searchParam) query = query.eq("category_main", activeMain);
-            if (activeSub) query = query.eq("category_sub", activeSub);
+            if (activeSub && !isNew && !isSale && !searchParam) query = query.eq("category_sub", activeSub);
             if (isNew) query = query.eq("is_new", true);
             if (isSale) query = query.not("discounted_price", "is", null);
             if (searchParam) query = query.ilike("name", `%${searchParam}%`);
             if (sort === "newest") query = query.order("created_at", { ascending: false });
             else if (sort === "price_asc") query = query.order("price", { ascending: true });
             else if (sort === "price_desc") query = query.order("price", { ascending: false });
-            const { data } = await query;
-            setProducts(data ?? []);
+            const { data, error } = await query;
+            setLoadError(!!error);
+            setProducts(error ? [] : (data ?? []));
             setLoading(false);
         };
         load();
     }, [gender, activeMain, activeSub, sort, isNew, isSale, searchParam]);
 
-    const cats = CATEGORIES[gender];
+    const cats = CATEGORIES[gender] ?? {};
 
     return (
         <main style={{ fontFamily: "var(--font-jost), sans-serif", background: "#faf8f5", minHeight: "100vh" }}>
@@ -165,6 +175,8 @@ function ProdottiContent() {
                     {/* GRIGLIA */}
                     {loading ? (
                         <div style={{ textAlign: "center", padding: "60px 0", color: "#9e8c78", fontSize: 13 }}>Caricamento...</div>
+                    ) : loadError ? (
+                        <div style={{ textAlign: "center", padding: "60px 0", color: "#c97a6a", fontSize: 13 }}>Non siamo riusciti a caricare il catalogo. Controlla la connessione e riprova.</div>
                     ) : products.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "60px 0", color: "#9e8c78", fontSize: 13 }}>Nessun prodotto disponibile in questa categoria.</div>
                     ) : (
@@ -183,8 +195,8 @@ function ProdottiContent() {
                                     <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 17, fontWeight: 300, color: "#2a2520", marginBottom: 4 }}>{product.name}</div>
                                     <div style={{ fontSize: 11, fontWeight: 300, color: "#9e8c78", marginBottom: 8 }}>{product.category_main}{product.category_sub ? ` — ${product.category_sub}` : ""}</div>
                                     <div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 18, fontWeight: 300, color: "#2a2520" }}>
-                                        € {product.discounted_price ?? product.price}
-                                        {product.discounted_price && <span style={{ fontSize: 13, color: "#c9b99a", textDecoration: "line-through", marginLeft: 8 }}>€ {product.price}</span>}
+                                        {formatPrice(product.discounted_price ?? product.price)}
+                                        {product.discounted_price != null && <span style={{ fontSize: 13, color: "#c9b99a", textDecoration: "line-through", marginLeft: 8 }}>{formatPrice(product.price)}</span>}
                                     </div>
                                 </Link>
                             ))}
